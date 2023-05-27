@@ -44,6 +44,7 @@ string mainClass::getAllArrivalFlightsDetails(vector<string> icoas){
 string mainClass::getAirplaneFlight(string icoas24){
       
     string res;
+    ostringstream oss;
     string path = "./flightDB/";
     for (const auto & entry : filesystem::directory_iterator(path)) {
         airports.push_back(airport(entry.path().filename().string()));
