@@ -39,3 +39,41 @@ string mainClass::getAllArrivalFlightsDetails(vector<string> icoas){
     }
     return res;
 }
+
+
+string mainClass::getAirplaneFlight(string icoas24){
+      
+    string res;
+    string path = "./flightDB/";
+    for (const auto & entry : filesystem::directory_iterator(path)) {
+        airports.push_back(airport(entry.path().filename().string()));
+    }
+    vector<Flight> flights;
+    vector<Flight> temp_flights;
+    vector<Flight> temp;
+    //Here we check for evrey arg in evrey icoa if found we print.
+    for(int i =1; i < argc; i++)
+    {
+            for(int j = 0; j < (int)airports.size(); j++)
+            {
+                 temp = airports[j].getFlightsByicoa24(argv[i]);  
+                 temp_flights.insert(temp_flights.end(),temp.begin(),temp.end());              
+            }
+            if(temp_flights.size() == 0)
+                    cout << "Airplane \"" << argv[i] << "\" have no data" << endl;
+            flights.insert(flights.end(),temp_flights.begin(),temp_flights.end());  
+            temp_flights.clear();
+    }
+    for(Flight& f : flights)
+    {
+   	 std::ostringstream oss;
+        oss << f.icoa24 << " departed from " << f.dpt << " at " << airport::convertLocalTime(f.dpt_time) << " arrived in " << f.arv << " at " << airport::convertLocalTime(f.arv_time) << endl;
+    }
+    
+    for (const std::string& line : lines) {
+        //cout<<line <<endl;
+        res += line; 
+    }
+    return res;
+}
+  
