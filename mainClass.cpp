@@ -78,3 +78,38 @@ string mainClass::getAirplaneFlight(string icoas24){
     return res;
 }
   
+
+string mainClass::getFull_schedule(vector<string> icoas){
+    string res;
+    ostringstream oss;
+    vector<string> lines;
+     for (int i = 1; i < icoas.size(); i++)
+    {
+    vector<pair<Flight,bool>> sortSche;
+    string name = argv[i];
+//loop sorted by time using func form utilty
+        try {
+            airport air(name);
+            sortSche = air.sort_full_sche();
+            for (const auto& f : sortSche) {
+               std::ostringstream oss;
+                if(f.second == IS_ARV)
+                     oss << "Flight #" << f.first.callsign << " arriving from " << f.first.dpt << ", at " << air.convertLocalTime(f.first.arv_time) << endl;
+                else
+                     oss << "Flight #" << f.first.callsign << " departing to " << f.first.arv << ", at " << air.convertLocalTime(f.first.dpt_time) <<  endl;
+
+            }
+        }
+        catch (string exepction_icoa)
+        {
+            cout << exepction_icoa << " not exist in the data base" << endl;
+        }
+        cout << "----------------------------------------------------------------------------------------------" << endl;
+	
+	  for (const std::string& line : lines) {
+        //cout<<line <<endl;
+        res += line; 
+    }
+    }
+    return res;
+}
