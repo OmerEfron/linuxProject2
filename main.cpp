@@ -1,100 +1,91 @@
 #include <iostream>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <string>
 #include <vector>
+#include <string>
+#include <sstream>
+#include <unistd.h>
+#include <sys/wait.h>
 #include "mainClass.h"
-#include <limits>
-
-
-
+#include <string.h>
 
 #define READ_END 0
 #define WRITE_END 1
-using namespace std;
 
-
-
-
-std::vector<std::string> getStringsFromUser() {
-    std::vector<std::string> result;
-    std::string currentString;
-    string input;
-
-    cin>>input;
-    cout<<input;
-    for(char c: input){
-        if(c == ' '){
-            if(!currentString.empty()){
-                result.push_back(currentString);
-                currentString.clear();
-            }
-        }else{
-            currentString += c;
-        }
-    }
-    if(!currentString.empty()){
-        result.push_back(currentString);
-    }
-    return result;
-}
-
-
-
-int childDoneWriting = 0;
-int parentDoneWriting = 0;
+int flag = 0;
 
 void signalHandler(int signalNumber){
-    if(signalNumber == SIGCONT)
-        childDoneWriting = 1;
-    else if(signalNumber == SIGUSR1)
-        parentDoneWriting = 1;
+    flag = 1;
 }
 
 int main() {
     int parentToChild[2];
     int childToParent[2];
-    mainClass mainObject;
-    signal(SIGCONT, signalHandler);
-    // Create the pipes
+    
     if (pipe(parentToChild) == -1 || pipe(childToParent) == -1) {
-        std::cerr << "Failed to create pipes." << std::endl;
+        std::cerr << "Failed to create pipe.\n";
         return 1;
     }
 
     pid_t pid = fork();
-
     if (pid < 0) {
-        std::cerr << "Fork failed." << std::endl;
+        std::cerr << "Fork failed.\n";
         return 1;
-    } else if (pid == 0) {
+    }
+
+    if (pid == 0) {
         // Child process
+        signal(SIGCONT, signalHandler);
         close(parentToChild[WRITE_END]);
         close(childToParent[READ_END]);
-
-        int choice;
         
-
+        mainClass mainObject;
+        int choice;
+        string result;
+        int sizeOfResult;
         while (true) {
-            read(parentToChild[READ_END], &choice, sizeof(choice));
-            cout<<choice;
-            char buffer[256];
-            vector<string> input;
-            std::string output;
-            ssize_t bytes_read;
-            switch(choice){
-                case 1:
-                    {
-                        read(parentToChild[READ_END], &input, sizeof(input));
-                        while(bytes_read = read(parentToChild[READ_END], buffer, sizeof(buffer) > 0)){
-                            input.emplace_back(buffer, bytes_read);
-                        }
-                        output = mainObject.getAllArrivalFlightsDetails(input);
-                    }
+            while(flag == 0){
+                //cout<<"still 0"<<endl;
+                sleep(1);
             }
-            write(childToParent[WRITE_END], output.c_str(), output.size() + 1);
+            flag = 0;
+            read(parentToChild[READ_END], &choice, sizeof(choice));
+            if (choice == 7) {
+                break;
+            }
+            switch (choice) {
+                case 1: {
+                    int numStrings;
+                    read(parentToChild[READ_END], &numStrings, sizeof(numStrings));
+                    cout<<numStrings;
+
+                    std::vector<std::string> strings(numStrings);
+                    for (int i = 0; i < numStrings; ++i) {
+                        char buffer[256];
+                        read(parentToChild[READ_END], buffer, sizeof(buffer));
+                        strings[i] = buffer;
+                    }
+                    result = mainObject.getAllArrivalFlightsDetails(strings);
+                    break;
+                }
+                case 2:{
+                    int numStrings;
+                    read(parentToChild[READ_END], &numStrings, sizeof(numStrings));
+
+                    std::vector<std::string> strings(numStrings);
+                    for (int i = 0; i < numStrings; ++i) {
+                        char buffer[256];
+                        read(parentToChild[READ_END], buffer, sizeof(buffer));
+                        strings[i] = buffer;
+                    }
+                    result = mainObject.getFull_schedule(strings);
+                    break;
+                }
+                default:
+                    result = "method " + std::to_string(choice);
+            }
+            cout<<"child size before write: "<<result.size()<< endl;
+            write(childToParent[WRITE_END], result.c_str(), result.size() + 1);
             kill(getppid(), SIGCONT);
+
         }
 
         close(parentToChild[READ_END]);
@@ -104,66 +95,80 @@ int main() {
         // Parent process
         close(parentToChild[READ_END]);
         close(childToParent[WRITE_END]);
-
-        int choice, status;
-        char output[120000];
+        signal(SIGCONT, signalHandler);
+        int choice;
+        std::string input;
+        std::vector<std::string> strings;
 
         while (true) {
-            cout << "1 - Fetch Airports incoming Flights.\n2 - Fetch airpots full flights schedule\n3 - Fetch aircraft full flights schedule\n4 - Update DB\n5 - Zip DB\n6 - Get child process PID.\n7 - EXIT." << endl;
-            cout<< "Please make your choice <1, 2, 3, 4, 5, 6, 7: ";
+            std::cout << "Menu:\n";
+            std::cout << "1. Enter strings\n";
+            std::cout << "2. Option 2\n";
+            std::cout << "3. Option 3\n";
+            std::cout << "4. Option 4\n";
+            std::cout << "5. Option 5\n";
+            std::cout << "6. Option 6\n";
+            std::cout << "7. Quit\n";
+            std::cout << "Enter your choice: ";
             std::cin >> choice;
-            vector<string> icoas;
-            switch(choice){
-                case 1:
-                {
-                    cout<<"Enter the ICOA code names: ";
-                    icoas = getStringsFromUser();
-                    write(parentToChild[WRITE_END], &choice, sizeof(choice));
-                    for(const auto& icoa:icoas){
-                        cout<<icoas[0];
-                        write(parentToChild[WRITE_END], icoa.c_str(), icoa.size());
-                    }
-                    
-                    break;
-                }
-                case 2:
-                {
-                    cout<<"Enter the ICOA code names: ";
-                    break;
-                }
-                case 3:
-                {
-                    cout<<"Enter the ICOA24 code name: ";
-                    break;
-                }
-                case 4:
-                {
-                    break;
-                }
-                case 5:
-                {
-                    break;
-                }
-                case 6:
-                {
-                    break;
-                }
-                case 7:
-                {
-                    break;
-                }
+
+            write(parentToChild[WRITE_END], &choice, sizeof(choice));
+
+            if (choice == 7) {
+                break;
             }
-            // while(childDoneWriting == 0){
-            //     sleep(4);
-            // }
-            childDoneWriting = 0;
-            read(childToParent[READ_END], output, sizeof(output));
-            std::cout << "Output from child: " << output << std::endl;
+
+            switch (choice) {
+                case 1: {
+                    std::cout << "Enter the number of strings: ";
+                    int numStrings;
+                    std::cin >> numStrings;
+                    write(parentToChild[WRITE_END], &numStrings, sizeof(numStrings));
+                
+
+                    std::cin.ignore(); // Ignore the newline character from previous input
+                    for (int i = 0; i < numStrings; ++i) {
+                        std::cout << "Enter string " << i + 1 << ": ";
+                        std::getline(std::cin, input);
+                        write(parentToChild[WRITE_END], input.c_str(), input.size() + 1);
+                        cout<<i<< " out of "<< numStrings<< endl;
+                    }
+
+                    break;
+                }
+                case 2:{
+                    std::cout << "Enter the number of strings: ";
+                    int numStrings;
+                    std::cin >> numStrings;
+                    write(parentToChild[WRITE_END], &numStrings, sizeof(numStrings));
+
+                    std::cin.ignore(); // Ignore the newline character from previous input
+                    for (int i = 0; i < numStrings; ++i) {
+                        std::cout << "Enter string " << i + 1 << ": ";
+                        std::getline(std::cin, input);
+                        write(parentToChild[WRITE_END], input.c_str(), input.size() + 1);
+                    }
+                    break;
+                }
+                default:
+                    // Other cases don't require additional input from the user
+                    break;
+            }
+
+            kill(pid, SIGCONT);
+            char buffer[1200000];
+            int status;
+            while(flag == 0){
+                sleep(1);
+            }
+            flag = 0;
+            read(childToParent[READ_END], buffer, sizeof(buffer));
+            cout<<"buffer size before print: "<< strlen(buffer) << endl;
+            //std::cout << "Response from child: " << buffer << std::endl;
         }
 
         close(parentToChild[WRITE_END]);
         close(childToParent[READ_END]);
-
         wait(NULL); // Wait for the child process to terminate
     }
 
