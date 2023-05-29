@@ -25,9 +25,9 @@ void airport::load_arv() {
                 switch (table_index)
                 {
                 case 0: arv_.icoa24 = field; break;
-                case 1: arv_.dpt_time = stoi(field); break;
+                case 1: arv_.dpt_time = (field == "null") ? -1 :stoi(field); break;
                 case 2: arv_.dpt = field; break;
-                case 3: arv_.arv_time = stoi(field); break;
+                case 3: arv_.arv_time = (field == "null") ? -1 :stoi(field); break;
                 case 4: arv_.arv = field; break;
                 case 5: arv_.callsign = field; break;
                 }
@@ -81,6 +81,9 @@ void airport::load_dpt() {
 
 
 const string airport::convertLocalTime(const int timeInSeconds){
+    if(timeInSeconds == -1){
+        return "unknown";
+    }
     // convert to time_t
     time_t time = timeInSeconds;
 
