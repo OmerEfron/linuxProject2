@@ -4,7 +4,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <sys/wait.h>
-#include "mainClass.h"
+#include "execution.h"
 #include <string.h>
 
 #define READ_END 0
@@ -56,10 +56,13 @@ int childFlag = 1;
 void signalHandler(int signumber){
     if(signumber == SIGINT || signumber == SIGUSR1)
         {
+            cout<<"Im here main signal " << signumber<<endl;
             flag = 0;
+            exit(0);
         }
     else if(signumber == SIGTERM){
         childFlag = 0;
+        cout<<"Im here chile signal " << signumber<<endl;
     }
     cout<<"recived signal: " << signumber<<endl;
 }
@@ -70,7 +73,7 @@ int main() {
     int parentToChild[2];
     int childToParent[2];
     
-    if (pipe(parentToChild) == -1 || pipe(childToParent) == -1) {
+    if (pipe(parentToChild) == -1 || pipe(childToParent) == -1) {//TODO
         std::cerr << "Failed to create pipe.\n";
         return 1;
     }
@@ -78,14 +81,14 @@ int main() {
     pid_t pid = fork();
     if (pid < 0) {
         std::cerr << "Fork failed.\n";
-        return 1;
+        return 1;//TODO
     }
 
     if (pid == 0) {
         // Child process
         signal(SIGTERM, signalHandler);
         cleanUp(parentToChild[WRITE_END],childToParent[READ_END]);
-        mainClass mainObject;
+        execution mainObject;
         int choice;
         string result;
         while (childFlag) {
@@ -141,8 +144,9 @@ int main() {
 
         while (flag) {
             printMenu();
+            std::cout << getpid();
             std::cin >> choice;
-
+            
             write(parentToChild[WRITE_END], &choice, sizeof(choice));
 
             if (choice == 7) {

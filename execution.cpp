@@ -1,4 +1,4 @@
-#include "mainClass.h"
+#include "execution.h"
 #include <iostream>
 #include <filesystem>
 #include <string>
@@ -6,7 +6,7 @@
 #include "utility.h"
 
 using namespace std;
-mainClass::mainClass() {
+execution::execution() {
     string path = "./flightDB/";
     for (const auto& entry : filesystem::directory_iterator(path)) {
         string name = entry.path().filename().string();
@@ -16,7 +16,7 @@ mainClass::mainClass() {
 }
 
 
-string mainClass::getAllArrivalFlightsDetails(vector<string> icoas){
+string execution::getAllArrivalFlightsDetails(vector<string> icoas){
     string res;
     ostringstream oss;
     vector<string> lines;
@@ -43,7 +43,7 @@ string mainClass::getAllArrivalFlightsDetails(vector<string> icoas){
 }
 
 
-string mainClass::getFull_schedule(vector<string> icoas){
+string execution::getFull_schedule(vector<string> icoas){
     string res;
     vector<string> lines;
     
@@ -79,7 +79,7 @@ string mainClass::getFull_schedule(vector<string> icoas){
 }
 
 
-string mainClass::getAirplaneFlight(string icoa24){
+string execution::getAirplaneFlight(string icoa24){
       
     string res;
     ostringstream oss;
@@ -115,7 +115,7 @@ string mainClass::getAirplaneFlight(string icoa24){
     return res;
 }
 
-string mainClass::updateDB(){
+string execution::updateDB(){
     int counter = 0;
     string res;
  //Here we check if there is DB to update
