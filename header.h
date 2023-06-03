@@ -14,8 +14,6 @@
 #define WRITE_END 1
 using namespace std;
 
-pid_t pid;
-
 void parentProccess(int* parentToChild,  int* childToParent, pid_t& pid);
 void childProccess(int* parentToChild,  int* childToParent);
 std::vector<std::string> readInputs(int pipeReadEnd);
@@ -24,5 +22,10 @@ void checkNumStringsInput(int& numStrings);
 void printMenu();
 void cleanUp(int pipe1, int pipe2);
 void signalHandler(int signumber);
+pid_t& getPid();
+bool zipDB();
+void addFileToZip(zip* archive, const filesystem::path& filePath, const filesystem::path& relativePath);
+void addDirectoryToZip(zip* archive, const filesystem::path& directoryPath, const filesystem::path& relativePath);
+
 
 #endif

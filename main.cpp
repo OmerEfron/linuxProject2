@@ -10,20 +10,22 @@ int main() {
         return 1;
     }
 
-    pid = fork();
-    if (pid < 0) {
+    pid_t& p_pid = getPid();
+    p_pid = fork();
+
+    if (p_pid < 0) {
         std::cerr << "Fork failed.\n";
         return 1;//TODO
     }
 
-    if (pid == 0) {
+    if (p_pid == 0) {
         // Child process
         childProccess(parentToChild,childToParent);
 
     } 
     else {
         // Parent process
-        parentProccess(parentToChild,childToParent,pid);
+        parentProccess(parentToChild,childToParent,p_pid);
     }
 
     return 0;

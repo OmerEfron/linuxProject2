@@ -1,6 +1,10 @@
 
 #include "header.h"
 
+pid_t pid;
+int child_flag = 1;
+pid_t& getPid(){return pid;}
+
 void parentProccess(int* parentToChild,  int* childToParent, pid_t& pid)
 {
         signal(SIGINT, signalHandler);
@@ -75,19 +79,18 @@ void parentProccess(int* parentToChild,  int* childToParent, pid_t& pid)
             }
             cout<<"\n";
         }
-        kill(pid, SIGTERM);
         close(parentToChild[WRITE_END]);
         close(childToParent[READ_END]);
         wait(NULL); // Wait for the child process to terminate
 }
 
 void childProccess(int* parentToChild,  int* childToParent){
-    signal(SIGTERM, signalHandler);
     signal(SIGINT, signalHandler);
+    signal(SIGUSR1, signalHandler);
         cleanUp(parentToChild[WRITE_END],childToParent[READ_END]);
         try{
             execution mainObject;
-            kill(getppid(), SIGUSR1);
+            kill(getppid(), SIGCONT);
         int choice;
         string result;
         while (true) {
@@ -189,17 +192,88 @@ void cleanUp(int pipe1, int pipe2){
 }
 
 void signalHandler(int signumber){
-    if(signumber == SIGINT)
+    if(signumber == SIGINT && pid > 0)
     {   
-        kill(pid,SIGINT);  
+        kill(pid,SIGINT); 
+        wait(NULL); 
         std::exit(0);
+    }
+    else if(signumber == SIGINT && pid == 0){
+        zipDB();
+        std::exit(0);
+        
+    }
+    else if(signumber == SIGUSR1 && pid == 0){
+            zipDB();
+            kill(getppid(), SIGINT); 
+            std::exit(0);
     }
     else if(signumber == SIGUSR2){
         cout <<"No data base." << endl;
-        
         std::exit(0);
     }
     else if(signumber == SIGCONT){
         //data base load succefully
+    }
+}
+bool zipDB(){
+    bool res = true;
+
+    const string libraryPath = "./flightDB/";
+    const string zipFilename = "DB.zip";
+
+    if (!(std::filesystem::exists(libraryPath) && std::filesystem::is_directory(libraryPath))) {
+        return false;
+    } 
+
+    int error;
+    zip* archive = zip_open(zipFilename.c_str(), ZIP_CREATE | ZIP_TRUNCATE, &error);
+    if (!archive) {
+        //std::cerr << "Failed to create ZIP archive: " << zip_strerror(archive) << std::endl;
+        return false;
+    }
+    filesystem::path libraryDirectory(libraryPath);
+    if (filesystem::exists(libraryDirectory) && filesystem::is_directory(libraryDirectory)) {
+        addDirectoryToZip(archive, libraryDirectory, filesystem::path(""));
+    } else {
+        cerr << "Invalid library path: " << libraryPath << endl;
+        zip_close(archive);
+        return 1;
+    }
+
+    if (zip_close(archive) == -1) {
+        //std::cerr << "Failed to close ZIP archive: " << zip_strerror(archive) << std::endl;
+        return false;
+    }
+    return res;
+}
+void addFileToZip(zip* archive, const filesystem::path& filePath, const filesystem::path& relativePath) {
+    std::string fileStr = filePath.string();
+
+    zip_source* source = zip_source_file(archive, fileStr.c_str(), 0, -1);
+    if (!source) {
+        std::cerr << "Failed to add file to ZIP archive: " << zip_strerror(archive) << std::endl;
+        return;
+    }
+
+    std::string relativePathStr = relativePath.string();
+    zip_int64_t index = zip_file_add(archive, relativePathStr.c_str(), source, ZIP_FL_OVERWRITE);
+    if (index == -1) {
+        //std::cerr << "Failed to add file to ZIP archive: " << zip_strerror(archive) << std::endl;
+        zip_source_free(source);
+        return;
+    }
+}
+
+void addDirectoryToZip(zip* archive, const filesystem::path& directoryPath, const filesystem::path& relativePath) {
+    for (const auto& entry : fs::directory_iterator(directoryPath)) {
+        const auto& path = entry.path();
+        const auto& relativeSubPath = relativePath / path.filename();
+
+        if (filesystem::is_directory(path)) {
+            addDirectoryToZip(archive, path, relativeSubPath);
+        } else if (filesystem::is_regular_file(path)) {
+            addFileToZip(archive, path, relativeSubPath);
+        }
     }
 }
